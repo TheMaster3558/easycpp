@@ -111,7 +111,7 @@ class _CPPModule(ModuleType):
         self.__path__: str = path
 
     def register(self) -> None:
-        sys.modules[self._name] = self  # type: ignore
+        sys.modules[self._name] = self
 
     def __dir__(self) -> Iterable[str]:
         items = list(super().__dir__())
