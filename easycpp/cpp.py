@@ -104,28 +104,27 @@ class _CPPModule(ModuleType):
     def __init__(self, name: str, names: Iterable[str], path) -> None:
         from cppyy import gbl
 
-        self.__name = name
-        self.__names = {n: getattr(gbl, n) for n in names}
+        self._name = name
+        self._names = {n: getattr(gbl, n) for n in names}
         super().__init__(name)
 
-        self.__path__ = path
+        self.__path__: str = path
 
     def register(self) -> None:
-        sys.modules[self.__name] = self  # type: ignore
+        sys.modules[self._name] = self  # type: ignore
 
     def __dir__(self) -> Iterable[str]:
         items = list(super().__dir__())
-        items.remove('_CPPModule__name')
-        items.remove('_CPPModule__names')
+        items.extend(list(self._names))
         return items
 
     def __getattr__(self, name: str) -> Any:
-        if name in self.__names:
-            return self.__names[name]
+        if name in self._names:
+            return self._names[name]
         return self.__getattribute__(name)
 
     def __getattribute__(self, name: str) -> Any:
         try:
             return super().__getattribute__(name)
         except AttributeError:
-            raise AttributeError(f'C++ module {self.__name!r} has no attribute {name!r}')
+            raise AttributeError(f'C++ module {self._name!r} has no attribute {name!r}')
