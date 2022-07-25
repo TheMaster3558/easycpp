@@ -77,7 +77,7 @@ def create_cpp_module(path: str, importable: bool = True):
     after = _get_names()
     new_objects = after - before
 
-    module = _CPPModule(str(path).split('.')[0], new_objects, path)
+    module = _CPPModule(str(path).split('.')[0].replace('/', '.'), new_objects, path)
     if importable:
         module.register()
     return module
