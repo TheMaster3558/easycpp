@@ -130,3 +130,8 @@ dmypy.json
 
 # PyCharm
 .idea
+
+# testing
+main.py
+testing.cpp
+testing.pyi
