@@ -6,6 +6,7 @@ from typing import Any, IO, Iterable, List, Set
 
 
 __author__ = 'The Master'
+__version__ = '0.1.0'
 __name__ = 'easycpp'
 __license__ = 'MIT'
 __copyright__ = 'copyright (c) The Master 2022-present'
@@ -23,15 +24,16 @@ def create_cpp_module(name: str, importable: bool = True):
     Easily use C++ in Python with this function.
 
     Parameters
-    ----------
+    -----------
     name: :class:`str`
-        The name of the C++ file.
-    importable: :class:bool`
+        The __name of the C++ file.
+    importable: :class:`bool`
         Whether this file should be able to be imported. This is done by adding to `sys.modules`.
 
     Example
-    -------
+    --------
     `human.cpp`
+
     .. code:: cpp
     
         class Human {
@@ -44,24 +46,31 @@ def create_cpp_module(name: str, importable: bool = True):
         }
         
     `main.py`
+
     .. code:: py
 
         from easycpp import create_cpp_module
-        easy_cpp_module('human.cpp')
+
+        create_cpp_module('human.cpp')
 
         from human import Human, hello
 
-        human = Human('Kaushal')
-        hello(human)  # Hello Kaushal!
+        human = Human('The Master')
+        hello(human)  # Hello The Master!
 
 
     .. note::
-        It is useful to add stubs so your editor recognizes the file as importable.
+        It is useful to add stubs so your editor recognizes the file.
+
+        `human.pyi`
 
         .. code:: py
 
             class Human:
                 name: str
+
+                def __init__(name: str) -> None: ...
+
 
             def hello(human: Human) -> None: ...
     """
@@ -102,13 +111,19 @@ class _CPPModule:
     def __init__(self, name: str, names: Iterable[str]) -> None:
         from cppyy import gbl
 
-        self.name = name
-        self.names = {n: getattr(gbl, n) for n in names}
+        self.__name = name
+        self.__names = {n: getattr(gbl, n) for n in names}
 
     def register(self) -> None:
-        _sys.modules[self.name] = self  # type: ignore
+        _sys.modules[self.__name] = self  # type: ignore
 
     def __getattr__(self, name: str) -> Any:
-        if name in self.names:
-            return self.names[name]
-        super().__getattr__(name)  # type: ignore
+        if name in self.__names:
+            return self.__names[name]
+        return self.__getattribute__(name)
+
+    def __getattribute__(self, name: str) -> Any:
+        try:
+            return super().__getattribute__(name)
+        except AttributeError:
+            raise AttributeError(f'C++ module {self.__name!r} has no attribute {name!r}')
