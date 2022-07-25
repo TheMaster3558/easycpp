@@ -21,6 +21,7 @@ setup(
     author=easycpp.__author__,
     version=easycpp.__version__,
     description='A Python module to easily use code from C++ in Python.',
+    packages=packages,
     long_description=readme,
     long_description_content_type='text/x-rst',
     include_package_data=True,
