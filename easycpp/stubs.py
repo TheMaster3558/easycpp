@@ -47,7 +47,7 @@ def _get_name(string: str, classes: List[str]) -> str:
     return str(type_)
 
 
-BASE_STRING = '''import typing
+_BASE_STRING = '''import typing
 
 T = typing.TypeVar('T')
 
@@ -99,7 +99,7 @@ def generate_stubs(path: str):
     with open(path, 'r') as file:
         code = file.read()
 
-    stubs_string = BASE_STRING
+    stubs_string = _BASE_STRING
     current_level = 0
 
     classes = [name for name in _GET_CLASSES_REGEX.findall(code)]
