@@ -1,6 +1,6 @@
 import re
 import subprocess
-from typing import Any, Dict, List, Literal, Match, Optional, overload
+from typing import Any, Dict, List, Match, Optional, overload
 
 try:
     import black
@@ -14,12 +14,12 @@ __all__ = 'generate_stubs',
 
 
 _FILE_SUFFIX_REGEX = re.compile(r'\.c(pp)?')
-_FUNCTION_REGEX = re.compile(r'([\w\d]+) ([\w_]+)(\([\w\d*\s\[\]]+\))')
+_FUNCTION_REGEX = re.compile(r'([\w\d_]+)\s+([\w\d_]+)(\([\w\d*\s\[\],]+\))')
 _POINTER_OR_ADDRESS = re.compile('[*&]')
 _GET_CLASSES_REGEX = re.compile(r'class[\s\n\t]*([\w\d_]+)[\s\n\t]*\{[.\n]*')
 _CLASS_REGEX = re.compile(r'class[\s\n\t]*([\w\d_]+)')
-_VAR_REGEX = re.compile(r'([\w\d_]+)\s+[*&]*([\w\d_]+);')
-_ARRAY_REGEX = re.compile(r'([\w\d_]+)\s+[*&]*([\w\d_]+)[\s\t\n]*\[[\s\t]*.*[\s\t]*]')
+_VAR_REGEX = re.compile(r'([\w\d_]+)\s+[*&]*([\w\d_]+)\s*=?\s*[\w\d_]*;')
+_ARRAY_REGEX = re.compile(r'([\w\d_]+)\s+[*&]*([\w\d_]+)[\s\t\n]*\[[\s\t]*.*[\s\t]*]\s*=?[\s*{}\w\d_,]+;')
 
 
 _sentinel: Any = object()
@@ -125,6 +125,7 @@ def generate_stubs(path: str, format_command: Optional[str] = None) -> Optional[
 
     stubs_string = _BASE_STRING
     current_level = 0
+    brackets = [0, 0]
 
     classes = [name for name in _GET_CLASSES_REGEX.findall(code)]
 
@@ -134,6 +135,11 @@ def generate_stubs(path: str, format_command: Optional[str] = None) -> Optional[
         var_match = _VAR_REGEX.search(line)
         array_match = _ARRAY_REGEX.search(line)
 
+        if '{' in line:
+            brackets[0] += 1
+        if '}' in line:
+            brackets[1] += 1
+        print(brackets, var_match)
         if class_match:
             stubs_string += ' ' * current_level + f'class {class_match.group(1)}:\n'\
                             + ' ' * (current_level + 4) + '...\n'
@@ -141,7 +147,7 @@ def generate_stubs(path: str, format_command: Optional[str] = None) -> Optional[
         if function_match:
             stubs_string += _get_function_annotations(function_match, classes, current_level)
 
-        if var_match:
+        if var_match and var_match.group(1) != 'return' and brackets[0] == brackets[1]:
             var_type = _get_name(var_match.group(1), classes)
             stubs_string += ' ' * current_level + f'{var_match.group(2)}: {var_type}\n'
 
@@ -184,7 +190,7 @@ def _get_function_annotations(function_match: Match[str], classes: List[str], cu
 
         parameter_name = _POINTER_OR_ADDRESS.sub('', parameter_name)
 
-        signature += f'{parameter_name}: {parameter_type}'
+        signature += f'{parameter_name}: {parameter_type},'
 
     return_type_string = function_match.group(1).lstrip('*').lstrip('unsigned ').lstrip('long ')
     return_type = _get_name(return_type_string, classes)
