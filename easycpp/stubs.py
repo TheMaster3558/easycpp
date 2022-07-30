@@ -1,5 +1,13 @@
 import re
-from typing import Any, Dict, List, Match, Optional
+import subprocess
+from typing import Any, Dict, List, Literal, Match, Optional, overload
+
+try:
+    import black
+except ImportError:
+    HAS_BLACK = False
+else:
+    HAS_BLACK = True
 
 
 __all__ = 'generate_stubs',
@@ -62,7 +70,15 @@ class _MutableCollection(typing.Collection[T]):  # this is made to type arrays
 '''
 
 
-def generate_stubs(path: str):
+@overload
+def generate_stubs(path: str) -> None: ...
+
+
+@overload
+def generate_stubs(path: str, format_command: str) -> subprocess.CompletedProcess: ...
+
+
+def generate_stubs(path: str, format_command: Optional[str] = None) -> Optional[subprocess.CompletedProcess]:
     """
     Generate stub files (``.pyi``) for a C++ file.
 
@@ -70,30 +86,38 @@ def generate_stubs(path: str):
     -----------
     path: :class:`str`
         The path to the file.
+    format_command: Optional[:class:`str`]
+        The format command to run on the file. The command should contain ``{name}`` where the name of the file goes.
+        Example: `black {name}`. Defaults to `black {name}` if black is installed. It will be run with ``stdout``
+        and ``stderr`` set to ``None``. Use the return type for any output.
+
+    Returns
+    -------
+    Optional[:class:`subprocess.CompletedProcess`]
 
 
-    .. note::
-        It can get a bit messy but it still does the job! Here is an example of a generated file.
+    Example of Stub File
 
-        .. code:: py
+    .. code:: py
 
-            import typing
+        import typing
 
-            T = typing.TypeVar('T')
+        T = typing.TypeVar('T')
 
 
-            class _MutableCollection(typing.Collection[T]):  # this is made to type arrays
-                def __getitem__(self, name: str) -> T: ...
-                def __setitem__(self, index: int, value: T) -> None: ...
-                def __delitem__(self, index: int) -> None: ...
+        class _MutableCollection(typing.Collection[T]):  # this is made to type arrays
+            def __getitem__(self, name: str) -> T: ...
+            def __setitem__(self, index: int, value: T) -> None: ...
+            def __delitem__(self, index: int) -> None: ...
 
-            # typing for C++ below
+        # typing for C++ below
 
-            class Human:
-                ...
-                name: str
-            def hello(human: Human) -> None: ...
+        class Human:
+            ...
+            name: str
+        def hello(human: Human) -> None: ...
                 """
+
     stubs_path = _FILE_SUFFIX_REGEX.sub('.pyi', path)
 
     with open(path, 'r') as file:
@@ -133,6 +157,17 @@ def generate_stubs(path: str):
 
     with open(stubs_path, 'w') as file:
         file.write(stubs_string)
+
+    if format_command is None and HAS_BLACK:
+        format_command = 'black {name}'
+
+    if format_command is not None:
+        try:
+            format_command = format_command.format(name=stubs_path)
+        except KeyError:
+            pass
+        else:
+            return subprocess.run(format_command.split(' '), stdout=None, stderr=None,  capture_output=True)
 
 
 def _get_function_annotations(function_match: Match[str], classes: List[str], current_level: int) -> str:

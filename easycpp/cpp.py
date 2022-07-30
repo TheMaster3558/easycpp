@@ -2,9 +2,9 @@ import cppyy as cppyy
 import sys as sys
 import re as re
 from types import ModuleType
-from typing import Any, Iterable, List, Set, TextIO
+from typing import Any, Iterable, List, Set, TextIO, Optional
 
-from .stubs import generate_stubs as _generate_stubs
+from .stubs import generate_stubs as generate_stubs_
 
 
 __all__ = 'create_cpp_module',
@@ -14,7 +14,12 @@ _INCLUDE_REGEX = re.compile(r'^#include\s*<\w+\.\w+>')
 _OUTSIDE_SUB_REGEX = re.compile(r'[<>]')
 
 
-def create_cpp_module(path: str, importable: bool = True, generate_stubs: bool = True):
+def create_cpp_module(
+        path: str,
+        importable: bool = True,
+        generate_stubs: bool = True,
+        format_command: Optional[str] = None
+) -> "_CPPModule":
     """
     Easily use C++ in Python with this function.
 
@@ -26,6 +31,8 @@ def create_cpp_module(path: str, importable: bool = True, generate_stubs: bool =
         Whether this file should be able to be imported. This is done by adding to `sys.modules`.
     generate_stubs: :class:`bool`
         Whether to generate a stub file (``.pyi``) so your editor recognizes the C++ file.
+    format_command: :class:`str`
+        Passed onto :func:`generate_stubs`
 
     Example
     --------
@@ -63,7 +70,7 @@ def create_cpp_module(path: str, importable: bool = True, generate_stubs: bool =
         cppyy.cppdef(code)
 
     if generate_stubs:
-        _generate_stubs(path)
+        generate_stubs_(path)
 
     after = _get_names()
     new_objects = after - before
