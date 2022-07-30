@@ -15,7 +15,7 @@ __all__ = 'generate_stubs',
 
 _FILE_SUFFIX_REGEX = re.compile(r'\.c(pp)?')
 _FUNCTION_REGEX = re.compile(r'([\w\d_]+)\s+([\w\d_]+)(\([\w\d*\s\[\],]+\))')
-_POINTER_OR_ADDRESS = re.compile('[*&]')
+_POINTER_OR_ADDRESS = re.compile(r'[*&]')
 _GET_CLASSES_REGEX = re.compile(r'class[\s\n\t]*([\w\d_]+)[\s\n\t]*\{[.\n]*')
 _CLASS_REGEX = re.compile(r'class[\s\n\t]*([\w\d_]+)')
 _VAR_REGEX = re.compile(r'([\w\d_]+)\s+[*&]*([\w\d_]+)\s*=?\s*[\w\d_]*;')
@@ -39,20 +39,6 @@ _CTYPES_CONVERSIONS: Dict[str, Optional[type]] = {
     'float': float,
     'double': float
 }
-
-
-def _get_name(string: str, classes: List[str]) -> str:
-    type_ = _CTYPES_CONVERSIONS.get(string, _sentinel)
-
-    if type_ is _sentinel:
-        if string in classes:
-            type_ = string
-        else:
-            type_ = 'typing.Any'
-
-    if isinstance(type_, type):
-        type_ = type_.__name__
-    return str(type_)
 
 
 _BASE_STRING = '''import typing
@@ -139,7 +125,7 @@ def generate_stubs(path: str, format_command: Optional[str] = None) -> Optional[
             brackets[0] += 1
         if '}' in line:
             brackets[1] += 1
-        print(brackets, var_match)
+
         if class_match:
             stubs_string += ' ' * current_level + f'class {class_match.group(1)}:\n'\
                             + ' ' * (current_level + 4) + '...\n'
@@ -192,7 +178,7 @@ def _get_function_annotations(function_match: Match[str], classes: List[str], cu
 
         signature += f'{parameter_name}: {parameter_type},'
 
-    return_type_string = function_match.group(1).lstrip('*').lstrip('unsigned ').lstrip('long ')
+    return_type_string = function_match.group(1).lstrip('*').replace('unsigned ', '').replace('long ', '')
     return_type = _get_name(return_type_string, classes)
 
     signature += ') -> '
@@ -200,3 +186,17 @@ def _get_function_annotations(function_match: Match[str], classes: List[str], cu
     signature += ': ...\n\n'
 
     return signature
+
+
+def _get_name(string: str, classes: List[str]) -> str:
+    type_ = _CTYPES_CONVERSIONS.get(string, _sentinel)
+
+    if type_ is _sentinel:
+        if string in classes:
+            type_ = string
+        else:
+            type_ = 'typing.Any'
+
+    if isinstance(type_, type):
+        type_ = type_.__name__
+    return str(type_)
