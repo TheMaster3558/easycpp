@@ -41,12 +41,13 @@ _CTYPES_CONVERSIONS: Dict[str, Optional[type]] = {
 }
 
 
-_BASE_STRING = '''import typing
+_BASE_STRING = '''import abc
+import typing
 
 T = typing.TypeVar('T')
 
 
-class _MutableCollection(typing.Collection[T]):  # this is made to type arrays
+class _MutableCollection(typing.Collection[T], abc.ABC):  # this is made to type arrays
     def __getitem__(self, name: str) -> T: ...
     def __setitem__(self, index: int, value: T) -> None: ...
     def __delitem__(self, index: int) -> None: ...
@@ -114,6 +115,7 @@ def generate_stubs(path: str, format_command: Optional[str] = None) -> Optional[
     brackets = [0, 0]
 
     classes = [name for name in _GET_CLASSES_REGEX.findall(code)]
+    last_match = ''
 
     for line in code.split('\n'):
         function_match = _FUNCTION_REGEX.search(line)
@@ -129,18 +131,22 @@ def generate_stubs(path: str, format_command: Optional[str] = None) -> Optional[
         if class_match:
             stubs_string += ' ' * current_level + f'class {class_match.group(1)}:\n'\
                             + ' ' * (current_level + 4) + '...\n'
+            last_match = 'class'
 
         if function_match:
             stubs_string += _get_function_annotations(function_match, classes, current_level)
+            last_match = 'function'
 
-        if var_match and var_match.group(1) != 'return' and brackets[0] == brackets[1]:
+        if var_match and var_match.group(1) != 'return' and (brackets[0] == brackets[1] or last_match != 'function'):
             var_type = _get_name(var_match.group(1), classes)
             stubs_string += ' ' * current_level + f'{var_match.group(2)}: {var_type}\n'
+            last_match = 'var'
 
         if array_match:
             array_type = _get_name(array_match.group(1), classes)
             array_name = array_match.group(2)
             stubs_string += ' ' * current_level + f'{array_name}: _MutableCollection[{array_type}]\n'
+            last_match = 'array'
 
         if '{' in line and not function_match:
             current_level += 4
